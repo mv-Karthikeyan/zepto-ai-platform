@@ -1,200 +1,164 @@
 import sqlite3
+from pathlib import Path
 import pandas as pd
 
 
-DATABASE_FILE = "data_pipeline/zepto_books.db"
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "zepto_books.db"
+
+OUTPUT_DIR = BASE_DIR / "query_results"
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+QUERY_FILE = BASE_DIR / "sql_queries.txt"
 
 
-def run_query(connection, query_name, query):
+# ============================================================
+# SQL QUERIES
+# ============================================================
+
+queries = {
+    "query_1_five_star_books": """
+        SELECT
+            title,
+            price_gbp,
+            rating
+        FROM books
+        WHERE rating = 5;
+    """,
+
+    "query_2_expensive_books": """
+        SELECT
+            title,
+            price_gbp
+        FROM books
+        ORDER BY price_gbp DESC
+        LIMIT 10;
+    """,
+
+    "query_3_distinct_ratings": """
+        SELECT DISTINCT
+            rating
+        FROM books
+        ORDER BY rating;
+    """,
+
+    "query_4_price_between": """
+        SELECT
+            title,
+            price_gbp
+        FROM books
+        WHERE price_gbp BETWEEN 20 AND 40
+        ORDER BY price_gbp;
+    """,
+
+    "query_5_rating_in": """
+        SELECT
+            title,
+            rating
+        FROM books
+        WHERE rating IN (4, 5)
+        ORDER BY rating DESC;
+    """,
+
+    "query_6_join_categories": """
+        SELECT
+            b.title,
+            b.price_gbp,
+            b.price_inr,
+            b.rating,
+            b.in_stock,
+            c.category_name
+        FROM books AS b
+        INNER JOIN categories AS c
+            ON b.category_id = c.category_id
+        ORDER BY c.category_name, b.title;
     """
-    Execute a SQL query and display the result.
-    """
-
-    print("\n")
-    print("=" * 70)
-    print(query_name)
-    print("=" * 70)
-
-    print("\nSQL Query:")
-    print(query)
-
-    result = pd.read_sql(
-        query,
-        connection
-    )
-
-    print("\nResult:")
-    print(
-        result.to_string(index=False)
-    )
-
-    return result
+}
 
 
-if __name__ == "__main__":
+def main():
 
-    print("========================================")
-    print("ZEPTO DATA PIPELINE - SQL QUERIES")
-    print("========================================")
-
-    connection = sqlite3.connect(
-        DATABASE_FILE
-    )
+    connection = sqlite3.connect(DB_PATH)
 
     try:
 
-        # ====================================================
-        # QUERY 1
-        # SELECT + WHERE
-        # ====================================================
+        # ----------------------------------------------------
+        # SAVE ALL SQL QUERY STRINGS
+        # ----------------------------------------------------
 
-        query_1 = """
-            SELECT
-                title,
-                price_gbp,
-                rating
-            FROM books
-            WHERE rating = 5
-        """
+        with open(
+            QUERY_FILE,
+            "w",
+            encoding="utf-8"
+        ) as file:
 
-        result_1 = run_query(
-            connection,
-            "QUERY 1 - Five Star Books",
-            query_1
-        )
+            for query_name, query in queries.items():
 
-        # ====================================================
-        # QUERY 2
-        # ORDER BY + LIMIT
-        # ====================================================
+                file.write(
+                    f"===== {query_name} =====\n"
+                )
 
-        query_2 = """
-            SELECT
-                title,
-                price_gbp,
-                price_inr
-            FROM books
-            ORDER BY price_gbp DESC
-            LIMIT 10
-        """
+                file.write(
+                    query.strip()
+                )
 
-        result_2 = run_query(
-            connection,
-            "QUERY 2 - Top 10 Most Expensive Books",
-            query_2
-        )
-
-        # ====================================================
-        # QUERY 3
-        # DISTINCT
-        # ====================================================
-
-        query_3 = """
-            SELECT DISTINCT
-                rating
-            FROM books
-            ORDER BY rating
-        """
-
-        result_3 = run_query(
-            connection,
-            "QUERY 3 - Distinct Ratings",
-            query_3
-        )
-
-        # ====================================================
-        # QUERY 4
-        # BETWEEN
-        # ====================================================
-
-        query_4 = """
-            SELECT
-                title,
-                price_gbp,
-                rating
-            FROM books
-            WHERE price_gbp BETWEEN 20 AND 40
-            ORDER BY price_gbp
-        """
-
-        result_4 = run_query(
-            connection,
-            "QUERY 4 - Books Between GBP 20 and GBP 40",
-            query_4
-        )
-
-        # ====================================================
-        # QUERY 5
-        # IN
-        # ====================================================
-
-        query_5 = """
-            SELECT
-                title,
-                rating,
-                price_gbp
-            FROM books
-            WHERE rating IN (4, 5)
-            ORDER BY rating DESC
-        """
-
-        result_5 = run_query(
-            connection,
-            "QUERY 5 - Books Rated Four or Five Stars",
-            query_5
-        )
-
-        # ====================================================
-        # QUERY 6
-        # JOIN
-        # ====================================================
-
-        query_6 = """
-            SELECT
-                b.book_id,
-                b.title,
-                b.price_gbp,
-                b.price_inr,
-                b.rating,
-                b.in_stock,
-                c.category_name
-            FROM books AS b
-            INNER JOIN categories AS c
-                ON b.category_id = c.category_id
-            ORDER BY
-                c.category_name,
-                b.title
-        """
-
-        result_6 = run_query(
-            connection,
-            "QUERY 6 - Books With Category JOIN",
-            query_6
-        )
-
-        print("\n")
-        print("=" * 70)
-        print("SQL QUERY REQUIREMENTS COMPLETED")
-        print("=" * 70)
+                file.write(
+                    "\n\n"
+                )
 
         print(
-            """
-Demonstrated:
-✓ SELECT
-✓ WHERE
-✓ ORDER BY
-✓ LIMIT
-✓ DISTINCT
-✓ BETWEEN
-✓ IN
-✓ INNER JOIN
-"""
+            f"SQL query strings saved to: "
+            f"{QUERY_FILE}"
+        )
+
+
+        # ----------------------------------------------------
+        # EXECUTE AND SAVE EACH QUERY RESULT
+        # ----------------------------------------------------
+
+        for query_name, query in queries.items():
+
+            result = pd.read_sql_query(
+                query,
+                connection
+            )
+
+            output_path = (
+                OUTPUT_DIR /
+                f"{query_name}.csv"
+            )
+
+            result.to_csv(
+                output_path,
+                index=False
+            )
+
+            print(
+                f"\n{query_name}"
+            )
+
+            print(
+                "-" * 60
+            )
+
+            print(
+                result.head(10)
+            )
+
+            print(
+                f"Saved output: {output_path}"
+            )
+
+
+        print(
+            "\nAll SQL queries and outputs "
+            "saved successfully."
         )
 
     finally:
 
         connection.close()
 
-        print(
-            "Database connection closed."
-        )
+
+if __name__ == "__main__":
+    main()

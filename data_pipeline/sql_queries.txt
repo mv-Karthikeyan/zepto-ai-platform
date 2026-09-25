@@ -1,0 +1,51 @@
+===== query_1_five_star_books =====
+SELECT
+            title,
+            price_gbp,
+            rating
+        FROM books
+        WHERE rating = 5;
+
+===== query_2_expensive_books =====
+SELECT
+            title,
+            price_gbp
+        FROM books
+        ORDER BY price_gbp DESC
+        LIMIT 10;
+
+===== query_3_distinct_ratings =====
+SELECT DISTINCT
+            rating
+        FROM books
+        ORDER BY rating;
+
+===== query_4_price_between =====
+SELECT
+            title,
+            price_gbp
+        FROM books
+        WHERE price_gbp BETWEEN 20 AND 40
+        ORDER BY price_gbp;
+
+===== query_5_rating_in =====
+SELECT
+            title,
+            rating
+        FROM books
+        WHERE rating IN (4, 5)
+        ORDER BY rating DESC;
+
+===== query_6_join_categories =====
+SELECT
+            b.title,
+            b.price_gbp,
+            b.price_inr,
+            b.rating,
+            b.in_stock,
+            c.category_name
+        FROM books AS b
+        INNER JOIN categories AS c
+            ON b.category_id = c.category_id
+        ORDER BY c.category_name, b.title;
+
